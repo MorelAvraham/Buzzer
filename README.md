@@ -1,3 +1,5 @@
+<img src="docs/assets/buzzer_logo.png" alt="Buzzer" width="300">
+
 # Buzzer
 
 Buzzer gives basketball players feedback on their shooting technique while they practise alone. The player wears a sensor sleeve on the shooting arm and puts a phone on a tripod to the side. The sleeve measures the arm, the camera measures the ball and the body, and the phone app shows each shot and marks what was different from the player's own made shots. It is for players who train alone, without a coach.
@@ -52,10 +54,8 @@ The camera values are also the labels used to train and test the sleeve models. 
 
 ## Offline first, then real time
 
-- **Stage 1, offline (until January 2027):** one sensor on the hand and the camera.
-- The analysis runs on a laptop after the session, in Python.
-- **Stage 2, real time (until June 2027):** the full sleeve with three sensors.
-- The same analysis runs on the phone during practice, and the sleeve vibrates right after the release at the joint that moved differently.
+- **Stage 1, offline (until January 2027):** one sensor on the hand and the camera. The analysis runs on a laptop after the session, in Python.
+- **Stage 2, real time (until June 2027):** the full sleeve with three sensors. The same analysis runs on the phone during practice, and the sleeve vibrates right after the release at the joint that moved differently.
 
 ## Repository map
 
