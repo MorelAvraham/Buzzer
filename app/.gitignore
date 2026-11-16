@@ -1,9 +1,0 @@
-.gradle/
-.kotlin/
-build/
-local.properties
-*.iml
-.idea/
-captures/
-# Pose models are downloaded by the :mobile:downloadPoseModels Gradle task
-mobile/src/main/assets/*.task
