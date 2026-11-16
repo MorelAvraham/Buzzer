@@ -1,0 +1,64 @@
+# Python
+__pycache__/
+*.py[cod]
+.venv/
+venv/
+.pytest_cache/
+.ipynb_checkpoints/
+*.egg-info/
+
+# Python script output (the sample input in analysis/sample/ is kept)
+analysis/out/
+vision/out/
+
+# Android
+.gradle/
+.kotlin/
+build/
+local.properties
+captures/
+*.apk
+*.aab
+*.keystore
+*.jks
+
+# IDEs
+.idea/
+.vscode/
+*.iml
+.DS_Store
+
+# ESP-IDF
+firmware/**/build/
+firmware/**/managed_components/
+firmware/**/sdkconfig
+firmware/**/sdkconfig.old
+
+# KiCad backups and caches
+*-backups/
+*.kicad_prl
+*.bak
+fp-info-cache
+_autosave-*
+*.lck
+
+# Data: recordings never go into Git. See data/README.md.
+data/*
+!data/README.md
+
+# Video and large raw files
+*.mp4
+*.mov
+*.avi
+*.mkv
+*.webm
+*.h264
+*.bin
+
+# Model files. See models/README.md.
+*.task
+*.tflite
+*.onnx
+*.pt
+*.pth
+*.ckpt
