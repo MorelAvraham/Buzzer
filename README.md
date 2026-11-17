@@ -1,136 +1,159 @@
-# CoachPocket
+<img src="docs/assets/buzzer_logo.png" alt="Buzzer" width="300">
 
-**A sensor-fused AI strength coach with real-time form correction.**
+# Buzzer
 
-Final project for HUJI course 67546 (Engineering Project Workshop), Group 7.
-Barak Kappah · Morel Avraham · Eitan Simckes
+Buzzer gives basketball players feedback on their shooting technique while they practise alone. The player wears a sensor sleeve on the shooting arm and puts a phone on a tripod to the side. The sleeve measures the arm, the camera measures the ball and the body, and the phone app shows each shot and marks what was different from the player's own made shots. It is for players who train alone, without a coach.
 
-Project page: [Notion](https://app.notion.com/p/03f3bbd7caaa8320b7b60121d3fc1436)
+Final engineering project, Hebrew University of Jerusalem, course 67547, group 106.
 
----
-
-## What it does
-
-CoachPocket watches a barbell lift and tells you, by voice and within the same rep, when your technique breaks down.
-
-It fuses two complementary channels on a single edge device:
-
-- **Vision.** A smartphone on a tripod 2 to 3 m away runs on-device pose estimation (30 fps, INT8 on the NPU). Good for posture: lumbar rounding, knee valgus, elbow drift, bar path.
-- **Inertial.** A custom wrist pod (ESP32-S3 + 6-axis IMU, our own PCB) streams 1 kHz motion data over BLE. Good for timing and dynamics: rep segmentation, tempo, eccentric duration, velocity transients, tremor.
-
-The camera sees the body, the pod feels the movement. Fusion targets the faults where posture and timing interact, such as rounding that only shows up late in a fatiguing set.
-
-**Latency budget:** fault onset to audible cue in under 300 ms.
-**Privacy:** all processing is on-device. No cloud, no video upload.
-
-## Architecture
+## The system
 
 ```mermaid
 flowchart LR
-    subgraph POD["Sensor pod (custom PCB)"]
-        IMU["ESP32-S3 + 6-axis IMU<br/>sample · timestamp · packetize"]
+    subgraph SLEEVE["Sensor sleeve"]
+        UA["Upper arm<br/>IMU + motor"]
+        FA["Forearm<br/>IMU + motor"]
+        HA["Hand<br/>IMU + motor"]
+        BOARD["Board<br/>ESP32-S3 + battery"]
+        UA --- BOARD
+        FA --- BOARD
+        HA --- BOARD
     end
-    subgraph EDGE["Edge device (smartphone)"]
-        CAM["Camera<br/>RGB 30 fps"] --> POSE["Pose estimation<br/>INT8 on NPU"]
-        BLE["BLE receiver<br/>decode · buffer · IMU features"] --> SYNC["Clock alignment<br/>offset · drift"]
-        POSE --> SYNC
-        SYNC --> FUSE["Fusion + fault classifier<br/>per-exercise · confidence + hysteresis"]
-        FUSE --> CUE["Voice cue"]
+    subgraph PHONE["Phone on a tripod"]
+        REC["Record<br/>video and sensor data on one clock"]
+        CAM["Camera analysis<br/>hoop, ball, body pose<br/>stage 1: laptop, stage 2: phone"]
+        SLV["Sleeve analysis<br/>shots, release, angles<br/>stage 1: laptop, stage 2: phone"]
+        CMP["Compare<br/>with the player's made shots<br/>stage 1: laptop, stage 2: phone"]
+        OUT["Output<br/>shot list, replay, vibration"]
+        REC --> CAM
+        REC --> SLV
+        CAM --> CMP
+        SLV --> CMP
+        CMP --> OUT
     end
-    IMU -- "BLE · 1 kHz" --> BLE
+    BOARD -- "BLE" --> REC
+    OUT -- "vibration command, stage 2 only" --> BOARD
 ```
 
-The pod does no classification. It samples, timestamps locally and transmits. Everything else runs on the phone.
+More detail in [docs/architecture.md](docs/architecture.md).
 
-## Scope
+## Who measures what
 
-| Tier | Exercises / goals |
+| Measure | Camera | Sleeve |
+|---|---|---|
+| Made or missed | Yes | No |
+| Release height | Yes, in metres | No |
+| Arc of the ball | Yes | No |
+| Legs and back posture | Yes, from a body pose model | No |
+| Release time | Yes, one frame every 33 ms | Yes, expected to be more exact |
+| Elbow angle | Check only | Yes |
+| Wrist snap | No | Yes |
+| Vibration feedback | No | Yes, stage 2 only |
+
+The camera values are also the labels used to train and test the sleeve models. More in [docs/measures.md](docs/measures.md).
+
+## Offline first, then real time
+
+- **Stage 1, offline (until January 2027):** one sensor on the hand and the camera. The analysis runs on a laptop after the session, in Python.
+- **Stage 2, real time (until June 2027):** the full sleeve with three sensors. The same analysis runs on the phone during practice, and the sleeve vibrates right after the release at the joint that moved differently.
+
+## Repository map
+
+| Folder | What is in it |
 |---|---|
-| Core | Full pipeline (pod to voice cue), evaluated on 3 lifts |
-| Target | Squat, deadlift, overhead press, bench press, barbell row, bicep curl, about 3 faults each |
-| Stretch | Hexagon NPU deployment, adaptive training-plan module, broader subject testing, pod rev. B |
+| [analysis/](analysis/) | Stage 1 Python analysis: one session in, one row per shot out |
+| [vision/](vision/) | Python video analysis: body pose script, plan for the ball and hoop detector |
+| [app/](app/) | Android app in Kotlin (plan only so far) |
+| [firmware/](firmware/) | ESP32-S3 firmware in ESP-IDF, draft BLE packet format (plan only so far) |
+| [hardware/](hardware/) | Sleeve hardware and the bill of materials |
+| [models/](models/) | Where trained models are described, and the LiteRT export for the phone |
+| [data/](data/) | Data policy, file names and CSV columns. No data in Git |
+| [docs/](docs/) | Architecture, measures, open questions, decision log, course reports |
 
-## Evaluation
+## Setup
 
-- Per-fault precision, recall and F1 on a subject-independent split
-- Three-way ablation: vision-only vs. inertial-only vs. fused
-- False-cue rate, end-to-end latency, sync error, BLE packet loss, rep-count accuracy
-- Dataset: about 900 labelled reps, balanced correct vs. deliberately faulted, defined with a certified trainer
+Clone the repository:
 
-## Team and ownership
+```bash
+git clone https://github.com/MorelAvraham/Buzzer.git
+```
 
-| Member | Initial area |
-|---|---|
-| Barak Kappah (BK) | Embedded and hardware, PCB |
-| Morel Avraham (MA) | Computer vision and on-device AI |
-| Eitan Simckes (ES) | Fusion, data and application |
+Then follow the README of the part you work on.
 
-Each milestone has one accountable lead. Leads rotate so everyone gets hands-on time in every domain.
+### Python (analysis and vision)
 
-## Milestones
+Python 3.10 or newer. Each folder has its own virtual environment.
 
-| ID | Weeks | Deliverable | Lead |
-|---|---|---|---|
-| M1 | 1 to 4 | Breadboard pod, BLE link, clock-sync protocol; pose pipeline live on device | BK (MA) |
-| M2 | 5 to 9 | Synchronised capture and labelling tooling, first ~300 labelled reps; PCB rev. A | ES (BK) |
-| M3 | 10 to 14 | Feature extraction, single-channel baselines, first fused classifier, INT8; mid-project demo | MA (ES) |
-| M4 | 15 to 19 | Toward six exercises, cue management, app layer; pod rev. B | ES (BK) |
-| M5 | 20 to 24 | Latency profiling and optimisation, false-cue tuning, full ablation | MA (ES) |
-| M6 | 25 to 28 | Integration, unseen-subject trials, final demo, poster and report | BK (all) |
+```bash
+cd analysis
+python3 -m venv .venv
+source .venv/bin/activate
+pip install -r requirements.txt
+python shots_from_session.py --sensor sample/synthetic_hand.csv --frames sample/synthetic_frames.csv --out out/synthetic_shots.csv
+```
+
+For `vision/`, do the same in that folder, and download the pose model as described in [vision/README.md](vision/README.md).
+
+### Android (app)
+
+Install the latest stable Android Studio from https://developer.android.com/studio, then the latest Android SDK Platform and Platform-Tools from its SDK Manager. Turn on USB debugging on the phone. Build steps are in [app/README.md](app/README.md).
+
+### Firmware
+
+ESP-IDF v5.5 for the ESP32-S3. Full install steps are in [firmware/README.md](firmware/README.md). Once the project exists:
+
+```bash
+cd firmware/sleeve
+idf.py set-target esp32s3
+idf.py build
+idf.py -p /dev/ttyACM0 flash monitor
+```
+
+## Roadmap
+
+**MVP, the skateboard (demo day, January 2027).** One sensor on the hand and the camera, free throws only, all analysis offline on a laptop. For every shot: release time, release height, made or missed, and the wrist snap speed. No real-time feedback.
+
+**Must have, the bike (June 2027).** The full sleeve with three sensors and the elbow and wrist angles, first offline. Then the analysis moves to the phone and the sleeve vibrates after the release. Our own board is designed in parallel, and the development board is the backup. A test with eight shooters.
+
+**Stretch, the car.** More shot types, and shot detection on the sleeve itself.
+
+Out of scope: games, defended shots, more than one player in the picture.
+
+### First targets
+
+These are targets, not results. Nothing has been measured yet.
+
+| Measure | Minimum | Target |
+|---|---|---|
+| Shots found by the sleeve | 90% | 97% |
+| Release time, error against slow-motion video | 50 ms | 20 ms |
+| Release height, error | 10 cm | 5 cm |
+| Made or missed, correct | 90% | 97% |
+| Elbow angle, error | 10 degrees | 5 degrees |
+| Stage 2 delay from release to vibration | 1 s | 0.5 s |
+
+The open questions behind these targets, U1 to U6, are in [docs/experiments.md](docs/experiments.md). Decisions are in [docs/decisions.md](docs/decisions.md).
+
+## Team
+
+Morel Avraham, Barak Kappah, Eitan Simckes.
+
+Mentor: Daniella Har Shalom.
+
+- Project page: [Notion](https://app.notion.com/p/Buzzer-Group-106-67547-03f3bbd7caaa8320b7b60121d3fc1436)
+- Course reports: [docs/milestone-1/](docs/milestone-1/)
+- How we work: [CONTRIBUTING.md](CONTRIBUTING.md)
 
 ## Status
 
-- [x] Project proposal submitted and approved
-- [ ] Course Milestone 1: first report (due 17 Nov 2026)
-- [ ] M1: breadboard pod and on-device pose pipeline
-- [ ] MVP for demo day (end of Semester A)
+- [x] Topic changed to basketball shooting, and the plan written (November 2026)
+- [ ] Course Milestone 1: preliminary report
+- [ ] Parts for the first sleeve bought
+- [ ] App records the video and one hand sensor on one clock
+- [ ] Open questions U1 and U2 answered
+- [ ] MVP demo (January 2027)
+- [ ] Final exhibition (June 2027)
 
-## Repository layout
+## Project history
 
-```
-CoachPocket/
-├── firmware/   # ESP32-S3 pod: IMU sampling, timestamping, BLE packetization
-├── hardware/   # PCB schematics, layout, BOM, enclosure/strap
-├── app/        # Edge-device app: camera, pose, BLE receiver, fusion, voice cues
-├── ml/         # Data tooling, labelling, feature extraction, training, quantisation
-├── docs/       # Reports, diagrams, measurement logs
-└── README.md
-```
-
-`app/` is in:
-
-- [app/README.md](app/README.md): build steps, modules, how detection works today, known limits
-- [docs/pod-ble-protocol.md](docs/pod-ble-protocol.md): pod-to-phone packet format (draft, awaiting firmware review)
-- [docs/data-collection.md](docs/data-collection.md): recording labelled sets and producing the precision/recall and ablation tables
-
-The remaining folders are added as each component lands. Every component folder gets its own README with exact toolchain versions and build steps.
-
-## Getting started
-
-### Prerequisites
-
-- Git and a GitHub account with access to this repo
-- Per component (versions are pinned in each folder's README):
-  - `firmware/`: ESP32-S3 toolchain and a USB cable to the dev board
-  - `app/`: Android development environment and an Android phone with developer mode enabled
-  - `ml/`: Python 3 with a virtual environment
-
-### Clone
-
-```bash
-git clone https://github.com/MorelAvraham/CoachPocket.git
-cd CoachPocket
-```
-
-Then follow the README inside the component you are working on.
-
-## Contributing
-
-- Each member commits their own work from their own GitHub account.
-- Work on a branch per task (`feature/ble-link`, `fix/clock-drift`) and merge to `main` through a pull request.
-- Commit messages describe the change, e.g. `firmware: add 1 kHz IMU sampling with local timestamps`.
-- Tasks, schedule and requirements are tracked in [Notion](https://app.notion.com/p/03f3bbd7caaa8320b7b60121d3fc1436).
-
-## Hardware
-
-Android (or comparable) edge device plus a self-built ESP32-S3 + IMU pod from off-the-shelf parts. BOM is roughly $100.
+Started in August 2026 as CoachPocket, a barbell strength coach, and changed to basketball in November 2026.

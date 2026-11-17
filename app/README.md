@@ -1,119 +1,71 @@
-# CoachPocket app (edge device)
+# app
 
-Android app that runs the whole pipeline on the phone: camera, pose estimation, BLE receive,
-clock alignment, squat analysis and the voice cue. First slice: the demo-day MVP path, **squat
-end to end** (knee valgus by camera, too-fast descent by pod, cue in the same repetition).
+The Android phone app, in Kotlin. It connects to the sleeve over BLE, records the video and the sleeve data on one clock, shows a list of the shots with their measures, plays the video of any shot, and marks the measures that were different from the player's own made shots.
 
-## Toolchain (pinned)
+Status: not started. There is no Android project in this folder yet. This README is the plan.
 
-| Tool | Version |
-|---|---|
-| JDK | 17 or newer (built and tested with 21) |
-| Gradle | 8.14.3 (wrapper) |
-| Android Gradle Plugin | 8.13.2 |
-| Kotlin | 2.2.21 |
-| compileSdk / targetSdk / minSdk | 36 / 36 / 31 (Android 12) |
-| MediaPipe Tasks Vision | 0.10.29 |
-| CameraX | 1.5.3 |
+## Stage 1 needs only three things
 
-All library versions live in `gradle/libs.versions.toml`.
+1. **Connect** to the sleeve over BLE (one sensor on the hand).
+2. **Record** the video and the sensor data on one clock.
+3. **Export** the files for the laptop analysis, named as in [data/README.md](../data/README.md).
 
-## Build and run
+The shot list, the replay and the analysis on the phone come in stage 2.
+
+## Planned modules
+
+| Module | What it does | Stage |
+|---|---|---|
+| `ble` | Scan, connect, read the sensor packets, send the vibration command | 1 (read), 2 (vibration) |
+| `record` | Start and stop a session, write the sensor CSV and the frame time stamps, export the files | 1 |
+| `camera` | Video recording with CameraX or Camera2, a time stamp for every frame | 1 |
+| `shots` | The list of shots with their measures, marks for measures that differ from the made shots | 2 |
+| `replay` | Play the video of one shot | 2 |
+| `analysis` | The camera and sleeve analysis from `vision/` and `analysis/`, run on the phone with LiteRT | 2 |
+
+## One clock
+
+Everything is written on the phone clock, `SystemClock.elapsedRealtimeNanos()`, in milliseconds in the CSV files.
+
+- **Video frames.** The camera gives a time stamp for every frame. Check `CameraCharacteristics.SENSOR_INFO_TIMESTAMP_SOURCE` on each phone. If it is `REALTIME`, the frame time stamps are already on the phone clock. If it is `UNKNOWN`, they need a conversion. Write the frame number and time of every frame to a CSV next to the video.
+- **Sensor samples.** The sleeve sends its own board time with each packet. The app turns board time into phone time. How to do this is part of the BLE draft in [firmware/README.md](../firmware/README.md).
+- **Check.** Tap the hand sensor against the ball in front of the camera at the start of each recording. The tap is visible in the video and in the sensor data, so it shows if the two clocks match.
+
+## Setup
+
+1. Install Android Studio, the latest stable version, from https://developer.android.com/studio. It comes with a JDK.
+2. In Android Studio open SDK Manager and install the latest Android SDK Platform and Android SDK Platform-Tools.
+3. On the phone, turn on Developer options and USB debugging.
+4. Check that the phone is connected:
 
 ```bash
-cd app
-./gradlew :core:test :tools:test # logic tests, no Android SDK or phone needed
-./gradlew :mobile:assembleDebug  # APK in mobile/build/outputs/apk/debug/
-./gradlew :mobile:installDebug   # onto a phone with USB debugging enabled
+adb devices
 ```
 
-Every pull request that touches `app/` runs the tests, Android lint and the APK build in GitHub
-Actions (`.github/workflows/app.yml`); the APK is attached to the run as an artifact.
+Once the project exists, build and install the debug app from this folder:
 
-Or open the `app/` folder in Android Studio. The first build downloads the two pose models
-(lite 5.5 MB, full 9 MB) into `mobile/src/main/assets/`; they are not committed.
-
-## Modules
-
-```
-app/
-├── core/     Pure Kotlin, no Android. All the logic, unit-tested on the JVM.
-│   ├── protocol/  BLE packet format, decoder, loss counters (R1)
-│   ├── sync/      pod-to-phone clock alignment (R2)
-│   ├── pose/      keypoint types and geometry
-│   ├── squat/     rep segmentation and knee-valgus detection from keypoints
-│   ├── imu/       vertical-velocity tracking and descent tempo from the pod
-│   ├── cue/       cue arbitration: cooldown, priority, one at a time (R7)
-│   ├── engine/    CoachEngine: glues the channels together, emits events
-│   ├── session/   recorded-session file format, reader and writer
-│   ├── eval/      replay, per-fault scoring, ablation, link (U1) and tap-sync (U2) analysis
-│   └── sim/       SimulatedPod and synthetic sessions: the firmware's exact packets, no hardware
-├── tools/    Command-line front end to core/eval. Runs on a laptop.
-└── mobile/   Android app: thin shell around core.
-    ├── camera/    CameraX + MediaPipe Pose Landmarker (GPU, CPU fallback)
-    ├── ble/       GATT client for the pod, and a pod emulator for a second phone
-    ├── audio/     pre-synthesised cue clips on a SoundPool
-    ├── record/    session recorder (keypoints + IMU + events, never video)
-    └── ui/        coach screen, record and threshold dialogs, pod-emulator screen
+```bash
+./gradlew assembleDebug
 ```
 
-The split matters: `core` has no Android dependency, so a recorded session can be replayed through
-exactly the code that runs on the phone, from a laptop. That is how the camera-only vs pod-only vs
-fused comparison (R5) is run: see [docs/data-collection.md](../docs/data-collection.md).
+```bash
+./gradlew installDebug
+```
 
-## Using it
+Decide together and write here: the package name, the minimum Android version, and the phones we test on.
 
-1. Tripod 2 to 3 m away, phone upright, whole body in frame. **In front of the lifter** for knee
-   valgus; from the side the app still counts reps and says so on screen.
-2. Stand tall for a moment (calibrates standing hip height), then lift.
-3. `Connect pod` scans for the CoachPocket BLE service. Without a pod the app runs camera-only and
-   measures descent tempo from the camera instead.
-4. `Record` asks who is lifting and what they will do on purpose (clean, or a deliberate fault),
-   then saves the set under `Android/data/com.coachpocket.app/files/sessions/`. That answer is the
-   set's ground-truth label. Keypoints and pod data only, never video.
-5. `Tune` changes the thresholds and switches channels (fused / camera only / pod only) without
-   rebuilding. Values persist on the phone and are written into every recording.
-6. `Be the pod` turns a **second phone** into a stand-in pod: it streams its own IMU over BLE in the
-   pod packet format, with the time beacon. Strap it to the wrist and the BLE link, clock sync and
-   fusion can be exercised today, before the breadboard pod exists. It is a development aid, not a
-   substitute: phone IMUs give 200 to 500 Hz, not 1 kHz.
-7. `Sim pod` feeds synthetic pod packets (two controlled squats, then one dive-bomb, repeating) to
-   bench-test the receive path on one phone. It is not linked to what the camera sees.
+## Code from the earlier project
 
-The top panel is the measurement harness: pose fps and inference time (R3), pod sample rate and
-packet loss (R1), sync state, and cue latency from fault onset to the audio play call.
+The earlier project, CoachPocket, had an Android app with a BLE client, a recorder and a clock sync class. It was built for a different sensor pod and has been removed from this folder. It is still in the Git history at commit `3f8c6a3`, for example:
 
-## How the detection works today
+```bash
+git show 3f8c6a3:app/core/src/main/kotlin/com/coachpocket/core/sync/ClockSync.kt
+```
 
-| Fault | Channel | Rule |
-|---|---|---|
-| Knee valgus | Camera | Knee sits more than 8% of leg length inside the hip-ankle line for 3 consecutive frames, while in the rep. Frontal view only. |
-| Too-fast descent | Pod | Downward speed above 0.8 m/s (caught mid-descent), or eccentric phase under 1.0 s. Only cued if the camera confirms a rep is in progress. |
-| Too-fast descent (no pod) | Camera | Eccentric phase under 1.0 s, known at the bottom. |
+Other files there: `app/mobile/src/main/java/com/coachpocket/app/ble/PodBleClient.kt` and `app/mobile/src/main/java/com/coachpocket/app/record/SessionRecorder.kt`. They may help as a reference. They have not been checked for Buzzer.
 
-Fusion is rule-based for now and runs both ways: the camera tells the IMU integrator when the
-lifter is moving (stops false zero-velocity resets in a slow descent), and vetoes pod faults that
-happen outside a rep (walking the bar out, re-racking).
+## Good first tasks
 
-## Known limits: read before trusting a number
-
-- **Not yet run on a phone.** The logic is covered by JVM tests and the APK builds and passes
-  lint, but camera, GPU inference, BLE (both roles) and audio have not been exercised on hardware.
-  Expect first-run fixes.
-- **Squat only.** Deadlift and overhead press are not started, on purpose: their faults have not
-  been defined with the trainer, and detectors written before that would be guesses.
-- **Lumbar rounding cannot be measured with this pose model.** BlazePose gives shoulders and hips
-  and nothing along the spine, so a rounded back and a flat back hinged at the hip look the same.
-  The README lists it as a camera fault; it needs either a different model or a different fault.
-- **Every threshold is a placeholder** (`SquatConfig`, `TempoConfig`). They are reasoned defaults,
-  not fitted values. They get fitted on the labelled data (U4, M2/M3) and reviewed with the trainer.
-- **The latency shown is a lower bound.** It ends at the `play()` call. Speaker output adds tens of
-  milliseconds, Bluetooth earphones add 100 to 250 ms. R6 can only be signed off with the 240 fps
-  video test (U6).
-- **Pose model is float16 on the GPU, not INT8 on the NPU.** MediaPipe's published bundles are
-  float. INT8 and the Hexagon NPU are M3/M5 work and will need a different runtime (LiteRT + QNN).
-- **The pod protocol is defined here and the firmware does not exist yet.** See
-  `docs/pod-ble-protocol.md`; it needs BK's review before it is frozen.
-- **Clock sync without the time beacon is late by the minimum BLE delay** (several ms). The
-  beacon or the tap test (U2) removes it.
-- The app has no `INTERNET` permission; it is stripped from the merged manifest on purpose (R8).
+- Create the empty Android project in this folder (Kotlin, Jetpack Compose), check that the debug build installs on your phone, and commit it.
+- For each phone in the team, find the value of `SENSOR_INFO_TIMESTAMP_SOURCE` and the highest frame rate of the back camera. Write them in an issue.
+- Write a first screen that scans for BLE devices and shows their names and signal strength.

@@ -1,0 +1,7 @@
+item,part,qty,unit_price_usd,total_usd,price_type,source,notes
+Sleeve board,Seeed XIAO ESP32S3,1,8,8,supplier website Nov 2026 without shipping,Seeed Studio,
+Sensors,SparkFun LSM6DSV16X board,3,25,75,supplier website Nov 2026 without shipping,SparkFun,one per sensor point: upper arm forearm hand
+Vibration,coin vibration motor,3,3,9,supplier website Nov 2026 without shipping,To be decided,one per sensor point
+"Battery, sleeve, cables","small lithium battery, compression arm sleeve, thin cables",1,30,30,estimate,To be decided,
+Tripod,phone tripod,1,15,15,estimate,To be decided,
+Own board,KiCad design made by an online manufacturer,1,20,20,estimate,To be decided,stage 2
