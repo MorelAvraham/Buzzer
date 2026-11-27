@@ -25,11 +25,15 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
+import androidx.lifecycle.viewmodel.compose.viewModel
 import il.ac.huji.buzzer.ui.CameraInfoScreen
+import il.ac.huji.buzzer.ui.SleeveScreen
+import il.ac.huji.buzzer.ui.SleeveViewModel
 
 /** The screens of the app. Kept simple on purpose: one enum, no navigation library. */
 enum class Screen(val title: String) {
     HOME("Home"),
+    SLEEVE("Sleeve"),
     CAMERA_INFO("Camera info"),
 }
 
@@ -46,13 +50,14 @@ class MainActivity : ComponentActivity() {
 }
 
 @Composable
-fun BuzzerApp() {
+fun BuzzerApp(sleeve: SleeveViewModel = viewModel()) {
     var screen by rememberSaveable { mutableStateOf(Screen.HOME) }
     BackHandler(enabled = screen != Screen.HOME) { screen = Screen.HOME }
     Scaffold(modifier = Modifier.fillMaxSize()) { padding ->
         val inner = Modifier.padding(padding)
         when (screen) {
             Screen.HOME -> HomeScreen(onOpen = { screen = it }, modifier = inner)
+            Screen.SLEEVE -> SleeveScreen(sleeve.connection, modifier = inner)
             Screen.CAMERA_INFO -> CameraInfoScreen(modifier = inner)
         }
     }
