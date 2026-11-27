@@ -76,7 +76,9 @@ The app decoder for this draft is `app/mobile/src/main/java/il/ac/huji/buzzer/bl
 | 0x10 | Vibrate | u8 point, u16 duration in ms, u8 strength 0 to 255 |
 | 0x20 | Time ping | u32 phone time in ms. The board answers on Status with the phone time and its own `t_us` |
 
-The time ping lets the app estimate the offset between the board clock and the phone clock. How often to send it, and how to handle clock drift, is still open.
+The reply to a time ping, on Status, is 9 bytes: `0x20`, u32 the phone time from the request, u32 the board time in microseconds when the board read the request.
+
+The time ping lets the app map board time to phone time. The app sends a ping about once a second during a recording. At the end it keeps the ping with the shortest round trip in each 5 s window and fits a straight line through them, which also corrects a small difference in clock speed. This assumes the delay is about the same in both directions. Code: `app/mobile/src/main/java/il/ac/huji/buzzer/sync/ClockSync.kt`.
 
 ## Setup
 
