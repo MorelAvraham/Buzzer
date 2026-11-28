@@ -22,6 +22,12 @@ class MainActivityTest {
     }
 
     @Test
+    fun sleeveScreenAsksForBluetoothPermission() {
+        composeRule.onNodeWithText("Sleeve").performClick()
+        composeRule.onNodeWithText("Allow Bluetooth").assertExists()
+    }
+
+    @Test
     fun opensCameraInfoAndGoesBack() {
         composeRule.onNodeWithText("Camera info").performClick()
         composeRule.onNodeWithText("Copy as a table for issue #17").assertExists()
