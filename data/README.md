@@ -43,6 +43,7 @@ All times are in milliseconds on the phone clock (`t_ms`), so the files can be m
 | `t_ms` | ms | Time of the sample on the phone clock |
 | `ax`, `ay`, `az` | m/s² | Acceleration |
 | `gx`, `gy`, `gz` | degrees per second | Turning speed |
+| `board_us` | microseconds | Time of the sample on the board clock, as sent by the sleeve. Kept to check the clock conversion |
 
 **Frame times file** (`frametimes.csv`):
 
