@@ -63,7 +63,7 @@ The camera values are also the labels used to train and test the sleeve models. 
 |---|---|
 | [analysis/](analysis/) | Stage 1 Python analysis: one session in, one row per shot out |
 | [vision/](vision/) | Python video analysis: body pose script, plan for the ball and hoop detector |
-| [app/](app/) | Android app in Kotlin (project skeleton only so far) |
+| [app/](app/) | Android app in Kotlin: stage 1 recorder, not yet run on a phone |
 | [firmware/](firmware/) | ESP32-S3 firmware in ESP-IDF, draft BLE packet format (plan only so far) |
 | [hardware/](hardware/) | Sleeve hardware and the bill of materials |
 | [models/](models/) | Where trained models are described, and the LiteRT export for the phone |
