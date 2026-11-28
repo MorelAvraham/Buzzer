@@ -51,6 +51,10 @@ All times are in milliseconds on the phone clock (`t_ms`), so the files can be m
 |---|---|
 | `frame` | Frame number in the video, from 0 |
 | `t_ms` | Time of the frame on the phone clock |
+| `sensor_ts_ns` | Camera sensor time stamp of the frame, in ns. Kept to check the clock conversion |
+| `matched` | 1 if a camera report matched this video frame, 0 if the time comes from the video file alone |
+
+There is one row for every frame in the video file. If the camera timestamp source is `UNKNOWN` (see #17), `t_ms` uses an estimated offset that can be late by a few ms.
 
 **Per-frame video file** (`frames.csv`), read by `analysis/`:
 
