@@ -23,10 +23,11 @@ class SensorRecording(val point: SensorPoint) {
     private val values = ArrayList<ScaledSample>()
     private val pings = ArrayList<Ping>()
 
-    val sampleCount: Int get() = times.size
-    val pingCount: Int get() = pings.size
+    val sampleCount: Int @Synchronized get() = times.size
+    val pingCount: Int @Synchronized get() = pings.size
 
-    /** Packets from other sensor points are ignored. */
+    /** Packets from other sensor points are ignored. Called from the BLE thread. */
+    @Synchronized
     fun addPacket(packet: SensorPacket) {
         if (packet.point != point) return
         val t0 = unwrapper.unwrap(packet.t0Us)
@@ -37,16 +38,19 @@ class SensorRecording(val point: SensorPoint) {
     }
 
     /** [boardUsRaw] is the 32-bit board time from the ping reply. */
+    @Synchronized
     fun addPing(phoneSendMs: Double, phoneReceiveMs: Double, boardUsRaw: Long) {
         pings.add(Ping(phoneSendMs, phoneReceiveMs, unwrapper.unwrap(boardUsRaw)))
     }
 
+    @Synchronized
     fun clockMapping(): ClockMapping? = ClockSync.fit(pings)
 
     /**
      * Writes the samples as CSV, columns as in data/README.md, sorted by time.
      * Returns the mapping used, or null and writes nothing if there was no ping.
      */
+    @Synchronized
     fun writeCsv(out: Writer): ClockMapping? {
         val mapping = clockMapping() ?: return null
         out.write(HEADER)
