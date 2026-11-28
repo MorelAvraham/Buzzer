@@ -2,7 +2,7 @@
 
 The Android phone app, in Kotlin. It connects to the sleeve over BLE, records the video and the sleeve data on one clock, shows a list of the shots with their measures, plays the video of any shot, and marks the measures that were different from the player's own made shots.
 
-Status: project skeleton only (#16). The app opens one screen with the name Buzzer. None of the modules below is built yet.
+Status: the stage 1 recorder is written and its logic is unit tested on a laptop. **It has not been run on a phone, with a real sleeve or with a real camera yet.** The screens are below. Issues #17 to #23 say what is left to check on a device.
 
 ## Stage 1 needs only three things
 
@@ -12,24 +12,56 @@ Status: project skeleton only (#16). The app opens one screen with the name Buzz
 
 The shot list, the replay and the analysis on the phone come in stage 2.
 
-## Planned modules
+## Screens
 
-| Module | What it does | Stage |
+| Screen | What it does | Issue |
 |---|---|---|
-| `ble` | Scan, connect, read the sensor packets, send the vibration command | 1 (read), 2 (vibration) |
-| `record` | Start and stop a session, write the sensor CSV and the frame time stamps, export the files | 1 |
-| `camera` | Video recording with CameraX or Camera2, a time stamp for every frame | 1 |
-| `shots` | The list of shots with their measures, marks for measures that differ from the made shots | 2 |
-| `replay` | Play the video of one shot | 2 |
-| `analysis` | The camera and sleeve analysis from `vision/` and `analysis/`, run on the phone with LiteRT | 2 |
+| Record a session | Player code and session details, video and hand sensor together, then a summary and a share button | #22 |
+| Sleeve | Bluetooth permission, scan, connect, link stats (board rate, samples that arrive, lost packets, ping round trip), start and stop streaming | #18, #19 |
+| Video test | Video only, at 30 or 60 fps, and how many frames got a time | #20 |
+| Camera info | Timestamp source and frame rates of each camera, copied as a table | #17 |
+
+## Code
+
+| Package | What it does | Stage |
+|---|---|---|
+| `ble` | Packet decoder, lost packet count, BLE scan and connect, commands, time pings | 1 (read), 2 (vibration) |
+| `sync` | Board clock unwrap and the board time to phone time mapping | 1 |
+| `camera` | CameraX video with a time for every frame, camera info | 1 |
+| `record` | Session names, `hand.csv`, `meta.json`, and the session that ties video and sensor together | 1 |
+| `ui` | The screens | 1 |
+| `shots`, `replay`, `analysis` | Shot list, replay, and the analysis on the phone with LiteRT | 2, not started |
+
+## One session on the phone
+
+1. Connect the sleeve on the **Sleeve** screen.
+2. Open **Record a session**, type the player code (P01, never a name), fill in the details and press **Start**.
+3. Tap the hand sensor against the ball in front of the camera (#23), then shoot.
+4. Press **Stop**. The app writes one folder, named as in [data/README.md](../data/README.md):
+
+```
+20261201_P01_S01/
+  20261201_P01_S01_video.mp4
+  20261201_P01_S01_frametimes.csv
+  20261201_P01_S01_hand.csv
+  20261201_P01_S01_meta.json
+```
+
+5. Press **Share the session files** to send them, for example to the shared Drive folder. Or copy all sessions with a cable:
+
+```bash
+adb pull /sdcard/Android/data/il.ac.huji.buzzer/files/sessions/
+```
+
+If the sleeve is not connected, only the video is recorded and the summary says so. If no time ping reply arrived, `hand.csv` is not written, because the sensor times cannot be put on the phone clock.
 
 ## One clock
 
 Everything is written on the phone clock, `SystemClock.elapsedRealtimeNanos()`, in milliseconds in the CSV files.
 
-- **Video frames.** The camera gives a time stamp for every frame. Check `CameraCharacteristics.SENSOR_INFO_TIMESTAMP_SOURCE` on each phone. If it is `REALTIME`, the frame time stamps are already on the phone clock. If it is `UNKNOWN`, they need a conversion. Write the frame number and time of every frame to a CSV next to the video.
-- **Sensor samples.** The sleeve sends its own board time with each packet. The app turns board time into phone time. How to do this is part of the BLE draft in [firmware/README.md](../firmware/README.md).
-- **Check.** Tap the hand sensor against the ball in front of the camera at the start of each recording. The tap is visible in the video and in the sensor data, so it shows if the two clocks match.
+- **Video frames.** A Camera2 capture callback reports the sensor time stamp of every frame. After the recording, the frame times in the MP4 file are matched to those reports, so `frametimes.csv` has one row per video frame even if the encoder drops frames. If the camera timestamp source is `REALTIME`, the time stamps are already on the phone clock. If it is `UNKNOWN`, the offset is estimated and can be late by a few ms. Code: `camera/FrameTimes.kt`.
+- **Sensor samples.** The sleeve sends its board time with each packet. The phone sends a time ping every second. At the end of the session the app fits a straight line from board time to phone time through the best ping of each 5 s window. Code: `sync/ClockSync.kt`.
+- **Check.** Tap the hand sensor against the ball in front of the camera at the start of each recording. The tap is visible in the video and in the sensor data, so it shows if the two clocks match (#23).
 
 ## Project settings
 
@@ -93,12 +125,10 @@ On Windows, use `gradlew.bat` instead of `./gradlew`.
 
 On a Linux machine without a phone or an emulator, with JDK 21 and Android SDK platform 37:
 
-- `./gradlew clean testDebugUnitTest lintDebug assembleDebug` passed.
-- `testDebugUnitTest`: 1 test, 0 failures. It starts `MainActivity` with Robolectric and checks that the screen shows "Buzzer".
-- `lintDebug`: no issues.
-- The debug APK has package `il.ac.huji.buzzer`, minimum SDK 29, target SDK 37 and the launcher activity `MainActivity`.
+- `./gradlew testDebugUnitTest lintDebug assembleDebug` passes: 59 tests, 0 failures, lint with 0 errors.
+- The tests cover the packet decoder (with a packet written byte by byte), lost packets, the clock mapping (with a simulated clock that runs 100 ppm fast), the CSV files, the matching of video frames to camera reports (with dropped frames), session names, `meta.json`, and that each screen opens.
 
-Not checked yet: installing and opening the app on a real phone. This is the last step of #16.
+Not checked: anything on a real phone, with a real camera or with a real sleeve. BLE and CameraX code only compiles here.
 
 ## Code from the earlier project
 
@@ -112,6 +142,7 @@ Other files there: `app/mobile/src/main/java/com/coachpocket/app/ble/PodBleClien
 
 ## Good first tasks
 
-- Install the debug app on your own phone, open it, and write the phone model and Android version in #16.
+- Install the app on your phone, open **Camera info** and paste the table in #17.
+- Set up a fake sleeve in the nRF Connect app on a second phone and follow the steps in #18. Write what happened in the issue.
+- Record 10 seconds on **Video test** at 30 and at 60 fps and check that `frametimes.csv` has one row per video frame (#20).
 - Add a GitHub Actions workflow that runs `./gradlew testDebugUnitTest lintDebug assembleDebug` in `app/` on every pull request that changes `app/`.
-- Replace the placeholder launcher icon in `mobile/src/main/res/drawable/ic_launcher.xml` with the Buzzer logo from `docs/assets/`.

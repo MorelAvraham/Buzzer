@@ -34,6 +34,12 @@ class MainActivityTest {
     }
 
     @Test
+    fun recordScreenAsksForCameraPermission() {
+        composeRule.onNodeWithText("Record a session").performClick()
+        composeRule.onNodeWithText("Allow camera").assertExists()
+    }
+
+    @Test
     fun opensCameraInfoAndGoesBack() {
         composeRule.onNodeWithText("Camera info").performClick()
         composeRule.onNodeWithText("Copy as a table for issue #17").assertExists()
