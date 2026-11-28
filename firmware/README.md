@@ -54,6 +54,19 @@ One notification holds several samples from one sensor point.
 
 With an MTU of 247 bytes, a packet can hold up to 19 samples (12 + 19 x 12 = 240 bytes).
 
+Range codes in `flags`:
+
+| Code | Accelerometer (bits 0 to 1) | Gyroscope (bits 2 to 4) |
+|---|---|---|
+| 0 | ±2 g | ±125 dps |
+| 1 | ±4 g | ±250 dps |
+| 2 | ±8 g | ±500 dps |
+| 3 | ±16 g | ±1000 dps |
+| 4 | | ±2000 dps |
+| 5 | | ±4000 dps |
+
+The app decoder for this draft is `app/mobile/src/main/java/il/ac/huji/buzzer/ble/SensorPacketDecoder.kt`, with tests that show example packets byte by byte.
+
 ### Control commands
 
 | First byte | Command | Then |
