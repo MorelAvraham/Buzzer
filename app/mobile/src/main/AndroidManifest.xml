@@ -20,6 +20,12 @@
         android:name="android.permission.ACCESS_FINE_LOCATION"
         android:maxSdkVersion="30" />
 
+    <!-- Video of the shots. No audio is recorded. -->
+    <uses-permission android:name="android.permission.CAMERA" />
+    <uses-feature
+        android:name="android.hardware.camera.any"
+        android:required="true" />
+
     <uses-feature
         android:name="android.hardware.bluetooth_le"
         android:required="true" />
