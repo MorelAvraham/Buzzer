@@ -1,0 +1,6 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Folders the app may share with other apps, for example to Google Drive. -->
+<paths>
+    <external-files-path name="sessions" path="sessions/" />
+    <files-path name="sessions_internal" path="sessions/" />
+</paths>

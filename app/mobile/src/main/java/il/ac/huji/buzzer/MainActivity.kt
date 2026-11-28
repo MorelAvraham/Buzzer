@@ -27,6 +27,7 @@ import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import il.ac.huji.buzzer.ui.CameraInfoScreen
+import il.ac.huji.buzzer.ui.RecordScreen
 import il.ac.huji.buzzer.ui.SleeveScreen
 import il.ac.huji.buzzer.ui.SleeveViewModel
 import il.ac.huji.buzzer.ui.VideoTestScreen
@@ -34,6 +35,7 @@ import il.ac.huji.buzzer.ui.VideoTestScreen
 /** The screens of the app. Kept simple on purpose: one enum, no navigation library. */
 enum class Screen(val title: String) {
     HOME("Home"),
+    RECORD("Record a session"),
     SLEEVE("Sleeve"),
     VIDEO_TEST("Video test"),
     CAMERA_INFO("Camera info"),
@@ -59,6 +61,7 @@ fun BuzzerApp(sleeve: SleeveViewModel = viewModel()) {
         val inner = Modifier.padding(padding)
         when (screen) {
             Screen.HOME -> HomeScreen(onOpen = { screen = it }, modifier = inner)
+            Screen.RECORD -> RecordScreen(sleeve.connection, modifier = inner)
             Screen.SLEEVE -> SleeveScreen(sleeve.connection, modifier = inner)
             Screen.VIDEO_TEST -> VideoTestScreen(modifier = inner)
             Screen.CAMERA_INFO -> CameraInfoScreen(modifier = inner)
