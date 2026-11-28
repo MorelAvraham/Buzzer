@@ -29,11 +29,13 @@ import androidx.lifecycle.viewmodel.compose.viewModel
 import il.ac.huji.buzzer.ui.CameraInfoScreen
 import il.ac.huji.buzzer.ui.SleeveScreen
 import il.ac.huji.buzzer.ui.SleeveViewModel
+import il.ac.huji.buzzer.ui.VideoTestScreen
 
 /** The screens of the app. Kept simple on purpose: one enum, no navigation library. */
 enum class Screen(val title: String) {
     HOME("Home"),
     SLEEVE("Sleeve"),
+    VIDEO_TEST("Video test"),
     CAMERA_INFO("Camera info"),
 }
 
@@ -58,6 +60,7 @@ fun BuzzerApp(sleeve: SleeveViewModel = viewModel()) {
         when (screen) {
             Screen.HOME -> HomeScreen(onOpen = { screen = it }, modifier = inner)
             Screen.SLEEVE -> SleeveScreen(sleeve.connection, modifier = inner)
+            Screen.VIDEO_TEST -> VideoTestScreen(modifier = inner)
             Screen.CAMERA_INFO -> CameraInfoScreen(modifier = inner)
         }
     }
